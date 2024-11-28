@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobi Sistemi</title>
+</head>
+<body>
+    <h1>Lobi Sistemi</h1>
+    <div id="lobby-screen">
+        <h2>Lobi Oluştur</h2>
+        <input id="username" type="text" placeholder="Kullanıcı Adı" required>
+        <input id="lobby-name" type="text" placeholder="Lobi İsmi" required>
+        <input id="lobby-password" type="password" placeholder="Lobi Şifresi (Opsiyonel)">
+        <button onclick="createLobby()">Lobi Oluştur</button>
+        <hr>
+        <h2>Mevcut Lobiler</h2>
+        <ul id="lobby-list"></ul>
+    </div>
+</body>
+<script src="main_menu_script.js"></script>
+</html>
