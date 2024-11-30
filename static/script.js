@@ -1,71 +1,78 @@
 const canvas = document.getElementById('whiteboard');
 const ctx = canvas.getContext('2d');
-const socket = new WebSocket('ws://localhost:8000/ws');
 let drawing = false;
+let mode = 'draw';
+let startX, startY;
+let shapes = [];
+let redoStack = [];
+let currentPath = [];
 
-// Çizim başlatma
-canvas.addEventListener('mousedown', (e) => {
+ctx.strokeStyle = '#000000';
+ctx.lineWidth = 2;
+
+// Mod değiştirme
+function setMode(selectedMode) {
+    mode = selectedMode;
+}
+
+// Çizimleri yeniden çiz
+function redrawShapes() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    shapes.forEach(shape => {
+        ctx.strokeStyle = shape.color;
+        ctx.lineWidth = shape.lineWidth;
+
+        if (shape.type === 'path') {
+            ctx.beginPath();
+            shape.path.forEach((point, index) => {
+                if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            });
+            ctx.stroke();
+        } else if (shape.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(shape.startX, shape.startY);
+            ctx.lineTo(shape.endX, shape.endY);
+            ctx.stroke();
+        }
+    });
+}
+
+
+// Çizim olayları
+canvas.addEventListener('mousedown', e => {
     drawing = true;
-    ctx.beginPath(); // Yeni bir yol başlat
-    ctx.moveTo(e.offsetX, e.offsetY);
+    startX = e.offsetX;
+    startY = e.offsetY;
 
-    // Server'a çizim başlangıç noktasını gönder
-    socket.send(JSON.stringify({
-        type: 'start',
-        x: e.offsetX,
-        y: e.offsetY
-    }));
-});
-
-// Çizim yaparken
-canvas.addEventListener('mousemove', (e) => {
-    if (!drawing) return; // Eğer çizim yapılmıyorsa, çık
-
-    const x = e.offsetX;
-    const y = e.offsetY;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-
-    // Server'a çizim verisini gönder
-    socket.send(JSON.stringify({
-        type: 'draw',
-        x,
-        y
-    }));
-});
-
-let debounceTimeout;
-
-canvas.addEventListener('mouseup', () => {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
-        if (!drawing) return;
-        drawing = false;
-        ctx.closePath();
-
-        // Server'a çizim bitişini bildir
-        socket.send(JSON.stringify({ type: 'end' }));
-    }, 10); // 10 ms içinde mouseup olayını işlemeye fırsat verir
-});
-
-canvas.addEventListener('mouseleave', () => {
-    drawing = false;
-    ctx.closePath(); // Yolu kapat
-
-    // Server'a çizim bitişini bildir
-    socket.send(JSON.stringify({ type: 'end' }));
-});
-
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === 'start') {
-        ctx.beginPath();
-        ctx.moveTo(data.x, data.y);
-    } else if (data.type === 'draw') {
-        ctx.lineTo(data.x, data.y);
-        ctx.stroke();
-    } else if (data.type === 'end') {
-        ctx.closePath(); // Server'dan gelen bitiş sinyaliyle yolu kapat
+    if (mode === 'draw') {
+        currentPath = [{ x: startX, y: startY }];
     }
-};
+});
+
+canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+
+    if (mode === 'draw') {
+        const x = e.offsetX;
+        const y = e.offsetY;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        currentPath.push({ x, y });
+    }
+});
+
+canvas.addEventListener('mouseup', e => {
+    if (!drawing) return;
+    drawing = false;
+
+    if (mode === 'draw') {
+        shapes.push({ type: 'path', path: currentPath, color: ctx.strokeStyle, lineWidth: ctx.lineWidth });
+        redoStack = [];
+    }
+
+    redrawShapes();
+});
