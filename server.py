@@ -44,7 +44,7 @@ def create_lobby(data: LobbyData):
 
     if data.name in lobbies:
         return {"error": "Lobi zaten mevcut"}
-    lobbies[data.name] = {"users": [data.username], "password": data.password, "canvas": []}
+    lobbies[data.name] = {"users": [data.username], "password": data.password, "canvas": [], "redo_stack": []}
     print(f"Güncel lobiler: {lobbies}")
     return {"message": "Lobi oluşturuldu", "lobby_name": data.name}
 
@@ -87,7 +87,28 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         while True:
             data = await websocket.receive_json()
             print(f"Gelen çizim verisi: {data}")
-            lobby["canvas"].append(data)
+
+            if data["type"] == "clear":
+                lobby["canvas"] = []
+                lobby["redo_stack"] = []
+            elif data["type"] == "undo":
+                if lobby["canvas"]:
+                    last_action = lobby["canvas"].pop()
+                    lobby["redo_stack"].append(last_action)
+            elif data["type"] == "redo":
+                if lobby["redo_stack"]:
+                    redo_action = lobby["redo_stack"].pop()
+                    lobby["canvas"].append(redo_action)
+                    # Redo edilen şekli diğer kullanıcılara gönder
+                    for connection in lobby["connections"]:
+                        if connection != websocket:
+                            await connection.send_json(redo_action)
+            else:
+                # Yeni bir çizim geldiğinde redo_stack sıfırlanır
+                lobby["redo_stack"] = []
+                lobby["canvas"].append(data)
+
+            # Tüm kullanıcılara mesajı ilet
             for connection in lobby["connections"]:
                 if connection != websocket:
                     await connection.send_json(data)
@@ -97,6 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         if not lobby["connections"]:
             print(f"Lobi siliniyor: {lobby_name}")
             del lobbies[lobby_name]
+
 
 if __name__ == "__main__":
     import uvicorn
