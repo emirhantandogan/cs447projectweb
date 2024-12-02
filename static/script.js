@@ -7,20 +7,46 @@ let shapes = [];
 let redoStack = [];
 let currentPath = [];
 
-// WebSocket bağlantısı
-const lobbyName = new URLSearchParams(window.location.search).get('lobby');
-const socket = new WebSocket(`ws://${window.location.host}/ws/${lobbyName}`);
+// URL'deki query parametrelerini ayrıştır
+const params = new URLSearchParams(window.location.search);
+const lobbyName = params.get('lobby');
+const username = params.get('username');
+const token = params.get('token'); // Token alınıyor
+console.log(`Query Params: lobby=${lobbyName}, username=${username}, token=${token}`);
+
+// Kullanıcı listesi için DOM öğesi
+const userListElement = document.getElementById('user-list');
+
+// Benzersiz oturum kimliği oluştur
+const sessionId = generateSessionId();
+
+function generateSessionId() {
+    return Math.random().toString(36).substring(2, 15); // Basit bir benzersiz ID
+}
+
+// WebSocket bağlantısı kur
+if (!lobbyName || !username || !token) {
+    alert("Lobi, kullanıcı adı veya token eksik!");
+    window.location.href = "/static/index.html"; // Ana sayfaya yönlendir
+}
+
+const socket = new WebSocket(`ws://${window.location.host}/ws/${lobbyName}?token=${encodeURIComponent(token)}&username=${encodeURIComponent(username)}&session_id=${sessionId}`);
 
 // WebSocket olayları
 socket.onopen = () => {
     console.log("WebSocket bağlantısı açıldı.");
+    // Kullanıcı adıyla bağlantı bilgisi gönder
+    socket.send(JSON.stringify({ type: "join", username }));
 };
 
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    console.log("WebSocket mesajı alındı:", data);
+    console.log("WebSocket mesajı alındı:", data); // Debug log
 
-    if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle') {
+    if (data.type === 'users') {
+        console.log("Kullanıcı listesi alındı:", data.users); // Kullanıcı listesini logla
+        updateUserList(data.users);
+    } else if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle') {
         shapes.push(data);
         redrawShapes();
     } else if (data.type === 'undo') {
@@ -40,21 +66,34 @@ socket.onmessage = (event) => {
     }
 };
 
+
 socket.onclose = () => {
     console.log("WebSocket bağlantısı kapandı.");
+    alert("Soket bağlantısı kapatıldı. Lobiye erişim başarısız.");
+    window.location.href = "/static/index.html"; // Ana menüye yönlendir
 };
 
 socket.onerror = (error) => {
     console.error("WebSocket hatası:", error);
+    alert("Soket bağlantısında bir hata oluştu. Ana menüye yönlendiriliyorsunuz.");
+    window.location.href = "/static/index.html"; // Ana menüye yönlendir
 };
 
 // Çizim verilerini WebSocket ile gönderme
 function sendDrawing(data) {
-    console.log("send_drawing entered!")
     if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(data));
-        console.log("sended!")
     }
+}
+
+// Kullanıcı listesini güncelle
+function updateUserList(users) {
+    userListElement.innerHTML = ""; // Mevcut listeyi temizle
+    users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = user;
+        userListElement.appendChild(li);
+    });
 }
 
 // Mod değiştirme
@@ -117,7 +156,6 @@ canvas.addEventListener('mousedown', e => {
     startY = e.offsetY;
 
     if (mode === 'draw') {
-        // Yeni bir yol başlat
         ctx.beginPath();
         ctx.moveTo(startX, startY);
         currentPath = [{ x: startX, y: startY }];
@@ -131,11 +169,8 @@ canvas.addEventListener('mousemove', e => {
     const y = e.offsetY;
 
     if (mode === 'draw') {
-        // Mevcut yola çizim yap
         ctx.lineTo(x, y);
         ctx.stroke();
-
-        // Çizilen noktayı mevcut yola ekle
         currentPath.push({ x, y });
     } else {
         redrawShapes();
@@ -203,8 +238,6 @@ function undo() {
         const lastShape = shapes.pop();
         redoStack.push(lastShape);
         redrawShapes();
-
-        // Undo işlemini diğer kullanıcılara bildir
         sendDrawing({ type: 'undo' });
     }
 }
@@ -214,18 +247,13 @@ function redo() {
         const shape = redoStack.pop();
         shapes.push(shape);
         redrawShapes();
-
-        // Redo işlemini sunucuya bildir
         sendDrawing({ type: 'redo' });
     }
 }
-
 
 function clearCanvas() {
     shapes = [];
     redoStack = [];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Clear işlemini diğer kullanıcılara bildir
     sendDrawing({ type: 'clear' });
 }

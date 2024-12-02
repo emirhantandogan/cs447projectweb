@@ -22,6 +22,11 @@
             margin-bottom: 10px;
         }
 
+        .main-container {
+            display: flex;
+            gap: 20px;
+        }
+
         .canvas-container {
             display: flex;
             flex-direction: column;
@@ -30,6 +35,38 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 20px;
+        }
+
+        .user-list-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 200px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .user-list-container h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #007bff;
+            text-align: center;
+        }
+
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .user-list li {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            text-align: center;
+            background-color: #f9f9f9;
         }
 
         canvas {
@@ -106,40 +143,46 @@
 </head>
 <body>
     <h1>Whiteboard</h1>
-    <div class="canvas-container">
-        <canvas id="whiteboard" width="800" height="600"></canvas>
-        <div class="controls">
-            <button onclick="setMode('draw')">
-                <img src="/static/icons/pencil.png" alt="Draw">
-            </button>
-            <button onclick="setMode('line')">
-                <img src="/static/icons/line.png" alt="Line">
-            </button>
-            <button onclick="setMode('rectangle')">
-                <img src="/static/icons/rectangle.png" alt="Rectangle">
-            </button>
-            <button onclick="setMode('circle')">
-                <img src="/static/icons/circle.png" alt="Circle">
-            </button>
-            <button onclick="setMode('triangle')">
-                <img src="/static/icons/triangle.png" alt="Triangle">
-            </button>
-            <button onclick="setMode('erase')">
-                <img src="/static/icons/eraser.png" alt="Erase">
-            </button>
-            <input type="color" id="color-picker" onchange="changeColor(this.value)">
-            <select id="line-width" onchange="changeLineWidth(this.value)">
-                <option value="2">2px</option>
-                <option value="5">5px</option>
-                <option value="10">10px</option>
-                <option value="20">20px</option>
-            </select>
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="whiteboard" width="800" height="600"></canvas>
+            <div class="controls">
+                <button onclick="setMode('draw')">
+                    <img src="/static/icons/pencil.png" alt="Draw">
+                </button>
+                <button onclick="setMode('line')">
+                    <img src="/static/icons/line.png" alt="Line">
+                </button>
+                <button onclick="setMode('rectangle')">
+                    <img src="/static/icons/rectangle.png" alt="Rectangle">
+                </button>
+                <button onclick="setMode('circle')">
+                    <img src="/static/icons/circle.png" alt="Circle">
+                </button>
+                <button onclick="setMode('triangle')">
+                    <img src="/static/icons/triangle.png" alt="Triangle">
+                </button>
+                <button onclick="setMode('erase')">
+                    <img src="/static/icons/eraser.png" alt="Erase">
+                </button>
+                <input type="color" id="color-picker" onchange="changeColor(this.value)">
+                <select id="line-width" onchange="changeLineWidth(this.value)">
+                    <option value="2">2px</option>
+                    <option value="5">5px</option>
+                    <option value="10">10px</option>
+                    <option value="20">20px</option>
+                </select>
+            </div>
+            <div class="text-controls">
+                <button onclick="undo()">Geri Al</button>
+                <button onclick="redo()">İleri Al</button>
+                <button onclick="clearCanvas()">Temizle</button>
+                <button onclick="downloadCanvas()">Kaydet</button>
+            </div>
         </div>
-        <div class="text-controls">
-            <button onclick="undo()">Geri Al</button>
-            <button onclick="redo()">İleri Al</button>
-            <button onclick="clearCanvas()">Temizle</button>
-            <button onclick="downloadCanvas()">Kaydet</button>
+        <div class="user-list-container">
+            <h2>Users</h2>
+            <ul id="user-list" class="user-list"></ul>
         </div>
     </div>
 
