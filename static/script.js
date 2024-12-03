@@ -274,21 +274,6 @@ canvas.addEventListener('mouseup', e => {
     const width = e.offsetX - startX;
     const height = e.offsetY - startY;
 
-    if (mode === 'draw' && currentPath.length > 1) {
-        const shape = { type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth };
-        shapes.push(shape);
-        sendDrawing(shape); // WebSocket üzerinden çizimi gönder
-        currentPath = [];
-    }
-});
-
-canvas.addEventListener('mouseup', e => {
-    if (!drawing) return;
-    drawing = false;
-
-    const width = e.offsetX - startX;
-    const height = e.offsetY - startY;
-
     let shape = null;
 
     if (mode === 'draw') {
@@ -316,6 +301,14 @@ canvas.addEventListener('mouseup', e => {
         redrawShapes();
         sendDrawing(shape); // WebSocket üzerinden çizimi gönder
     }
+
+    // Çizim yapan kişinin adını temizlemek için bekleyin ve ardından isimleri temizleyin
+    if (usernameTimeout) {
+        clearTimeout(usernameTimeout);
+    }
+    usernameTimeout = setTimeout(() => {
+        redrawShapes(); // Yeniden çizim yaparak kullanıcı adını temizle
+    }, 1000); // 1 saniye sonra kullanıcının adını temizle
 });
 
 
