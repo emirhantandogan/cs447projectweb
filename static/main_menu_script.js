@@ -2,6 +2,7 @@ const lobbyScreen = document.getElementById("lobby-screen");
 const lobbyList = document.getElementById("lobby-list");
 
 // Mevcut lobileri backend'den çekip listeleme
+// Mevcut lobileri backend'den çekip listeleme
 async function fetchLobbies() {
     try {
         const response = await fetch("/lobbies");
@@ -16,10 +17,11 @@ async function fetchLobbies() {
             const li = document.createElement("li");
             li.className = "lobby-item"; // CSS için sınıf ekledik
 
-            // Şifreli/şifresiz durumunu doğru şekilde ekle
+            // Şifreli/şifresiz durumunu ve kullanıcı limitini ekle
             li.innerHTML = `
                 <span class="lobby-name">${lobby.name}</span>
                 <span class="lobby-status">${lobby.has_password ? "Şifreli" : "Şifresiz"}</span>
+                <span class="lobby-users">(${lobby.current_users}/${lobby.max_users})</span>
             `;
 
             const joinButton = document.createElement("button");
@@ -34,11 +36,13 @@ async function fetchLobbies() {
     }
 }
 
+
 // Yeni bir lobi oluşturma
 async function createLobby() {
     const username = document.getElementById("username").value.trim();
     const lobbyName = document.getElementById("lobby-name").value.trim();
     const password = document.getElementById("lobby-password").value;
+    const maxUsers = parseInt(document.getElementById("lobby-max-users").value, 10) || 0;  // Maksimum kullanıcı sayısı, varsayılan 0
 
     if (!username || !lobbyName) {
         alert("Lütfen kullanıcı adı ve lobi ismini doldurun!");
@@ -49,7 +53,7 @@ async function createLobby() {
         const response = await fetch("/create_lobby", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: lobbyName, username, password }),
+            body: JSON.stringify({ name: lobbyName, username, password, max_users: maxUsers }),
         });
 
         const result = await response.json();
@@ -82,6 +86,7 @@ async function createLobby() {
     }
 }
 
+
 // Bir lobiye katılma
 async function joinLobby(name, hasPassword) {
     const username = document.getElementById("username").value.trim();
@@ -104,6 +109,9 @@ async function joinLobby(name, hasPassword) {
             if (checkResult.error.includes("kullanıcı adı")) {
                 alert("Bu kullanıcı adı zaten lobide mevcut. Lütfen başka bir kullanıcı adı seçin.");
                 return; // Şifre ekranına geçmeden işlemi sonlandırıyoruz
+            } else if (checkResult.error.includes("Lobi dolu")) {
+                alert("Bu lobi dolu. Maksimum kullanıcı limitine ulaşıldı.");
+                return; // Lobi dolu olduğunda işlemi hemen sonlandırıyoruz
             } else if (checkResult.error.includes("Şifre gerekli")) {
                 // Kullanıcı adı geçerli, şifre ekranına geçiyoruz
                 let password = "";
@@ -139,6 +147,7 @@ async function joinLobby(name, hasPassword) {
         console.error("Lobiye katılırken bir hata oluştu:", error);
     }
 }
+
 
 // "Yenile" butonunu işlevsel hale getirme
 document.getElementById("refresh-button").addEventListener("click", fetchLobbies);

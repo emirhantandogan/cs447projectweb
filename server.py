@@ -31,6 +31,7 @@ class LobbyData(BaseModel):
     name: str
     username: str
     password: str = ""
+    max_users: int = 0
 
 class JoinLobbyData(BaseModel):
     name: str
@@ -40,7 +41,12 @@ class JoinLobbyData(BaseModel):
 @app.get("/lobbies")
 def get_lobbies():
     print(f"Mevcut lobiler: {lobbies}")
-    return [{"name": name, "has_password": bool(lobby["password"])} for name, lobby in lobbies.items()]
+    return [{
+        "name": name,
+        "has_password": bool(lobby["password"]),
+        "current_users": len(lobby["connections"]),
+        "max_users": lobby["max_users"] if lobby["max_users"] > 0 else "Limitsiz"
+    } for name, lobby in lobbies.items()]
 
 @app.post("/create_lobby")
 def create_lobby(data: LobbyData):
@@ -61,7 +67,8 @@ def create_lobby(data: LobbyData):
         "password": hashed_password,
         "canvas": [],
         "redo_stack": [],
-        "connections": []
+        "connections": [],
+        "max_users": data.max_users
     }
     print(f"Lobi oluşturuldu: {data.name}")
     return {"message": "Lobi oluşturuldu", "lobby_name": data.name}
@@ -72,6 +79,10 @@ def get_lobby_token(data: JoinLobbyData):
         return {"error": "Lobi bulunamadı"}
 
     lobby = lobbies[data.name]
+
+    # Kullanıcı limiti kontrolü
+    if lobby["max_users"] > 0 and len(lobby["connections"]) >= lobby["max_users"]:
+        return {"error": "Lobi dolu. Maksimum kullanıcı limitine ulaşıldı."}
 
     # Kullanıcı adı kontrolü
     if any(connection["username"] == data.username for connection in lobby["connections"]):
@@ -88,6 +99,7 @@ def get_lobby_token(data: JoinLobbyData):
     token = secrets.token_urlsafe(16)
     lobby_tokens[token] = data.name
     return {"token": token}
+
 
 async def broadcast_user_list(lobby_name: str):
     """Lobideki tüm kullanıcılara kullanıcı listesini gönderir."""
@@ -120,6 +132,12 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         return
 
     lobby = lobbies[lobby_name]
+
+    # Maksimum kullanıcı limitine ulaşıldıysa bağlantıya izin verme
+    if lobby["max_users"] > 0 and len(lobby["connections"]) >= lobby["max_users"]:
+        await websocket.close(code=403)
+        print(f"Hata: Lobi dolu: {lobby_name}")
+        return
 
     # Aynı kullanıcı adı varsa yeni girişe izin verme
     for connection in lobby["connections"]:
@@ -196,7 +214,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    #uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
 
 
 # if __name__ == "__main__":
