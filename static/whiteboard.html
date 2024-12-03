@@ -31,12 +31,10 @@
                     <img src="/static/icons/eraser.png" alt="Erase">
                 </button>
                 <input type="color" id="color-picker" onchange="changeColor(this.value)">
-                <select id="line-width" onchange="changeLineWidth(this.value)">
-                    <option value="2">2px</option>
-                    <option value="5">5px</option>
-                    <option value="10">10px</option>
-                    <option value="20">20px</option>
-                </select>
+                <div class="line-width-container">
+                    <input type="range" id="line-width" min="1" max="20" value="2" oninput="changeLineWidth(this.value); document.getElementById('line-width-value').textContent = this.value + 'px';">
+                    <span id="line-width-value">2px</span>
+                </div>
             </div>
             <div class="text-controls">
                 <button onclick="undo()">Geri Al</button>

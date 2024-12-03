@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from passlib.hash import bcrypt
 import uuid
 import secrets
+import json
+
 
 app = FastAPI()
 
@@ -140,17 +142,26 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
 
     try:
         while True:
-            data = await websocket.receive_json()
-            print(f"Gelen çizim verisi: {data}")
+            # WebSocket mesajını alırken kontrol et ve hata yönetimi yap
+            try:
+                data = await websocket.receive_text()
+                if not data.strip():
+                    continue  # Boş mesajları yok say
+                data_json = json.loads(data)
+            except json.JSONDecodeError:
+                print(f"Hata: Geçersiz JSON verisi alındı: {data}")
+                continue
 
-            if data["type"] == "clear":
+            print(f"Gelen çizim verisi: {data_json}")
+
+            if data_json["type"] == "clear":
                 lobby["canvas"] = []
                 lobby["redo_stack"] = []
-            elif data["type"] == "undo":
+            elif data_json["type"] == "undo":
                 if lobby["canvas"]:
                     last_action = lobby["canvas"].pop()
                     lobby["redo_stack"].append(last_action)
-            elif data["type"] == "redo":
+            elif data_json["type"] == "redo":
                 if lobby["redo_stack"]:
                     redo_action = lobby["redo_stack"].pop()
                     lobby["canvas"].append(redo_action)
@@ -159,11 +170,12 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
                             await connection["websocket"].send_json(redo_action)
             else:
                 lobby["redo_stack"] = []
-                lobby["canvas"].append(data)
+                lobby["canvas"].append(data_json)
 
             for connection in lobby["connections"]:
                 if connection["websocket"] != websocket:
-                    await connection["websocket"].send_json(data)
+                    await connection["websocket"].send_json(data_json)
+
     except WebSocketDisconnect:
         print(f"WebSocket bağlantısı kesildi: {lobby_name} - Kullanıcı: {username}")
         lobby["connections"] = [

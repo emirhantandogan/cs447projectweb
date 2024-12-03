@@ -15,7 +15,7 @@ let currentLineWidth = 2; // Varsayılan çizgi kalınlığı
 const params = new URLSearchParams(window.location.search);
 const lobbyName = params.get('lobby');
 const username = params.get('username');
-const token = params.get('token'); // Token alınıyor
+token = params.get('token'); // Token alınıyor
 console.log(`Query Params: lobby=${lobbyName}, username=${username}, token=${token}`);
 
 // Kullanıcı listesi için DOM öğesi
@@ -44,29 +44,34 @@ socket.onopen = () => {
 };
 
 socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("WebSocket mesajı alındı:", data); // Debug log
+    if (!event.data || event.data.trim() === "") return; // Gelen veriyi kontrol et, boşsa işlemi sonlandır
+    try {
+        const data = JSON.parse(event.data);
+        console.log("WebSocket mesajı alındı:", data); // Debug log
 
-    if (data.type === 'users') {
-        console.log("Kullanıcı listesi alındı:", data.users); // Kullanıcı listesini logla
-        updateUserList(data.users);
-    } else if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle') {
-        shapes.push(data);
-        redrawShapes();
-    } else if (data.type === 'undo') {
-        if (shapes.length > 0) {
-            redoStack.push(shapes.pop());
+        if (data.type === 'users') {
+            console.log("Kullanıcı listesi alındı:", data.users); // Kullanıcı listesini logla
+            updateUserList(data.users);
+        } else if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle' || data.type === 'erase') {
+            shapes.push(data);
             redrawShapes();
+        } else if (data.type === 'undo') {
+            if (shapes.length > 0) {
+                redoStack.push(shapes.pop());
+                redrawShapes();
+            }
+        } else if (data.type === 'redo') {
+            if (data.shape) {
+                shapes.push(data.shape);
+                redrawShapes();
+            }
+        } else if (data.type === 'clear') {
+            shapes = [];
+            redoStack = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-    } else if (data.type === 'redo') {
-        if (data.shape) {
-            shapes.push(data.shape);
-            redrawShapes();
-        }
-    } else if (data.type === 'clear') {
-        shapes = [];
-        redoStack = [];
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } catch (error) {
+        console.error("Gelen mesaj JSON formatında değil veya işlenemedi:", event.data, error);
     }
 };
 
@@ -84,8 +89,14 @@ socket.onerror = (error) => {
 
 // Çizim verilerini WebSocket ile gönderme
 function sendDrawing(data) {
-    if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(data));
+    if (socket.readyState === WebSocket.OPEN && data) {
+        try {
+            socket.send(JSON.stringify(data));
+        } catch (error) {
+            console.error("Veri gönderimi sırasında hata oluştu:", error);
+        }
+    } else {
+        console.warn("Veri gönderilemedi. WebSocket bağlantısı açık değil veya veri geçersiz:", data);
     }
 }
 
@@ -148,6 +159,8 @@ function redrawShapes() {
             ctx.lineTo(shape.startX - shape.width / 2, shape.startY + shape.height);
             ctx.closePath();
             ctx.stroke();
+        } else if (shape.type === 'erase') {
+            ctx.clearRect(shape.startX, shape.startY, shape.width, shape.height);
         }
     });
 }
@@ -177,6 +190,12 @@ canvas.addEventListener('mousemove', e => {
         ctx.lineWidth = currentLineWidth;
         ctx.stroke();
         currentPath.push({ x, y });
+    } else if (mode === 'erase') {
+        const width = currentLineWidth * 2; // Silginin genişliği çizgi kalınlığına bağlı olarak ayarlanıyor
+        const height = currentLineWidth * 2; // Silginin yüksekliği çizgi kalınlığına bağlı olarak ayarlanıyor
+        ctx.clearRect(x - width / 2, y - height / 2, width, height);
+        shapes.push({ type: 'erase', startX: x - width / 2, startY: y - height / 2, width, height });
+        sendDrawing({ type: 'erase', startX: x - width / 2, startY: y - height / 2, width, height });
     } else {
         redrawShapes();
 
@@ -216,11 +235,13 @@ canvas.addEventListener('mouseup', e => {
     const width = e.offsetX - startX;
     const height = e.offsetY - startY;
 
-    let shape;
+    let shape = null;
 
     if (mode === 'draw') {
-        shape = { type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth };
-        shapes.push(shape);
+        if (currentPath.length > 1) {
+            shape = { type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth };
+            shapes.push(shape);
+        }
         currentPath = [];
     } else if (mode === 'line') {
         shape = { type: 'line', startX, startY, endX: e.offsetX, endY: e.offsetY, color: currentColor, lineWidth: currentLineWidth };
@@ -237,9 +258,12 @@ canvas.addEventListener('mouseup', e => {
         shapes.push(shape);
     }
 
-    redrawShapes();
-    sendDrawing(shape); // WebSocket üzerinden çizimi gönder
+    if (shape) {
+        redrawShapes();
+        sendDrawing(shape); // WebSocket üzerinden çizimi gönder
+    }
 });
+
 
 
 function undo() {
