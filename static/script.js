@@ -1,3 +1,5 @@
+// script.js dosyasındaki gerekli düzenleme:
+
 const canvas = document.getElementById('whiteboard');
 const ctx = canvas.getContext('2d');
 let drawing = false;
@@ -6,6 +8,8 @@ let startX, startY;
 let shapes = [];
 let redoStack = [];
 let currentPath = [];
+let currentColor = '#000000'; // Varsayılan çizim rengi
+let currentLineWidth = 2; // Varsayılan çizgi kalınlığı
 
 // URL'deki query parametrelerini ayrıştır
 const params = new URLSearchParams(window.location.search);
@@ -66,7 +70,6 @@ socket.onmessage = (event) => {
     }
 };
 
-
 socket.onclose = () => {
     console.log("WebSocket bağlantısı kapandı.");
     alert("Soket bağlantısı kapatıldı. Lobiye erişim başarısız.");
@@ -103,11 +106,11 @@ function setMode(selectedMode) {
 
 // Renk ve çizgi kalınlığı değiştirme
 function changeColor(color) {
-    ctx.strokeStyle = color;
+    currentColor = color; // Sadece mevcut client'ın rengini değiştiriyoruz
 }
 
 function changeLineWidth(width) {
-    ctx.lineWidth = width;
+    currentLineWidth = width; // Sadece mevcut client'ın çizgi kalınlığını değiştiriyoruz
 }
 
 // Çizimleri yeniden çiz
@@ -170,6 +173,8 @@ canvas.addEventListener('mousemove', e => {
 
     if (mode === 'draw') {
         ctx.lineTo(x, y);
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = currentLineWidth;
         ctx.stroke();
         currentPath.push({ x, y });
     } else {
@@ -177,6 +182,9 @@ canvas.addEventListener('mousemove', e => {
 
         const width = x - startX;
         const height = y - startY;
+
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = currentLineWidth;
 
         if (mode === 'line') {
             ctx.beginPath();
@@ -211,27 +219,28 @@ canvas.addEventListener('mouseup', e => {
     let shape;
 
     if (mode === 'draw') {
-        shape = { type: 'path', path: currentPath, color: ctx.strokeStyle, lineWidth: ctx.lineWidth };
+        shape = { type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth };
         shapes.push(shape);
         currentPath = [];
     } else if (mode === 'line') {
-        shape = { type: 'line', startX, startY, endX: e.offsetX, endY: e.offsetY, color: ctx.strokeStyle, lineWidth: ctx.lineWidth };
+        shape = { type: 'line', startX, startY, endX: e.offsetX, endY: e.offsetY, color: currentColor, lineWidth: currentLineWidth };
         shapes.push(shape);
     } else if (mode === 'rectangle') {
-        shape = { type: 'rectangle', startX, startY, width, height, color: ctx.strokeStyle, lineWidth: ctx.lineWidth };
+        shape = { type: 'rectangle', startX, startY, width, height, color: currentColor, lineWidth: currentLineWidth };
         shapes.push(shape);
     } else if (mode === 'circle') {
         const radius = Math.sqrt(width * width + height * height);
-        shape = { type: 'circle', startX, startY, radius, color: ctx.strokeStyle, lineWidth: ctx.lineWidth };
+        shape = { type: 'circle', startX, startY, radius, color: currentColor, lineWidth: currentLineWidth };
         shapes.push(shape);
     } else if (mode === 'triangle') {
-        shape = { type: 'triangle', startX, startY, width, height, color: ctx.strokeStyle, lineWidth: ctx.lineWidth };
+        shape = { type: 'triangle', startX, startY, width, height, color: currentColor, lineWidth: currentLineWidth };
         shapes.push(shape);
     }
 
     redrawShapes();
     sendDrawing(shape); // WebSocket üzerinden çizimi gönder
 });
+
 
 function undo() {
     if (shapes.length > 0) {
