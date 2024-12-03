@@ -152,6 +152,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
                 print(f"Hata: Geçersiz JSON verisi alındı: {data}")
                 continue
 
+            # Gelen çizim verisine username'i ekleyelim
+            data_json["username"] = username
             print(f"Gelen çizim verisi: {data_json}")
 
             if data_json["type"] == "clear":
@@ -169,9 +171,11 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
                         if connection["websocket"] != websocket:
                             await connection["websocket"].send_json(redo_action)
             else:
+                # Çizim veri parçaları server tarafında depolanmaya devam eder
                 lobby["redo_stack"] = []
                 lobby["canvas"].append(data_json)
 
+            # Tüm bağlantılara çizim verilerini gönder
             for connection in lobby["connections"]:
                 if connection["websocket"] != websocket:
                     await connection["websocket"].send_json(data_json)
@@ -190,6 +194,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         if not lobby["connections"]:
             print(f"Lobi siliniyor: {lobby_name}")
             del lobbies[lobby_name]
+
 
 if __name__ == "__main__":
     import uvicorn

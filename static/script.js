@@ -5,6 +5,7 @@ const ctx = canvas.getContext('2d');
 let drawing = false;
 let mode = 'draw';
 let startX, startY;
+
 let shapes = [];
 let redoStack = [];
 let currentPath = [];
@@ -44,6 +45,9 @@ socket.onopen = () => {
     socket.send(JSON.stringify({ type: "join", username }));
 };
 
+// Çizim yapan kişinin adını geçici olarak göstermek için timeout ID'si
+let usernameTimeout = null;
+
 socket.onmessage = (event) => {
     if (!event.data || event.data.trim() === "") return; // Gelen veriyi kontrol et, boşsa işlemi sonlandır
     try {
@@ -56,6 +60,24 @@ socket.onmessage = (event) => {
         } else if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle' || data.type === 'erase') {
             shapes.push(data);
             redrawShapes();
+
+            // Çizim yapan kişinin adını gösterme
+            if (data.username) {
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "#000000";
+                const lastPoint = data.path ? data.path[data.path.length - 1] : { x: data.startX, y: data.startY };
+                ctx.fillText(data.username, lastPoint.x + 10, lastPoint.y + 10);
+
+                // Eğer önceden bir isim gösteriliyorsa bu timeout'u temizle
+                if (usernameTimeout) {
+                    clearTimeout(usernameTimeout);
+                }
+
+                // 1 saniye sonra kullanıcının ismini temizle
+                usernameTimeout = setTimeout(() => {
+                    redrawShapes(); // Yeniden çizim yaparak isimleri temizle
+                }, 1000);
+            }
         } else if (data.type === 'undo') {
             if (shapes.length > 0) {
                 redoStack.push(shapes.pop());
@@ -75,6 +97,8 @@ socket.onmessage = (event) => {
         console.error("Gelen mesaj JSON formatında değil veya işlenemedi:", event.data, error);
     }
 };
+
+
 
 socket.onclose = () => {
     console.log("WebSocket bağlantısı kapandı.");
@@ -233,6 +257,11 @@ canvas.addEventListener('mousemove', e => {
             ctx.closePath();
             ctx.stroke();
         }
+
+        // Çizim yapan kişinin adını göster
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#000000";
+        ctx.fillText(username, x + 10, y + 10); // Çizim yapılan son noktaya kullanıcı adını ekle
     }
 });
 
@@ -242,6 +271,9 @@ canvas.addEventListener('mouseup', e => {
     drawing = false;
 
     clearInterval(drawingInterval); // Çizim intervalini durdur
+
+    // Çizim yapan kişinin adını temizle
+    redrawShapes();
 
     const width = e.offsetX - startX;
     const height = e.offsetY - startY;
@@ -274,6 +306,7 @@ canvas.addEventListener('mouseup', e => {
         sendDrawing(shape); // WebSocket üzerinden çizimi gönder
     }
 });
+
 
 
 canvas.addEventListener('mouseup', e => {
