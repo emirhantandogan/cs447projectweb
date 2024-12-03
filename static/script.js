@@ -10,6 +10,7 @@ let redoStack = [];
 let currentPath = [];
 let currentColor = '#000000'; // Varsayılan çizim rengi
 let currentLineWidth = 2; // Varsayılan çizgi kalınlığı
+let drawingInterval = null; // Çizim verisinin gönderimi için interval id'si
 
 // URL'deki query parametrelerini ayrıştır
 const params = new URLSearchParams(window.location.search);
@@ -176,6 +177,13 @@ canvas.addEventListener('mousedown', e => {
         ctx.moveTo(startX, startY);
         currentPath = [{ x: startX, y: startY }];
     }
+
+    // Çizim sırasında belirli aralıklarla veriyi göndermek için interval başlat
+    drawingInterval = setInterval(() => {
+        if (currentPath.length > 1) {
+            sendDrawing({ type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth });
+        }
+    }, 100); // Her 100 ms'de bir çizim verisi gönderilir
 });
 
 canvas.addEventListener('mousemove', e => {
@@ -227,6 +235,46 @@ canvas.addEventListener('mousemove', e => {
         }
     }
 });
+
+            
+canvas.addEventListener('mouseup', e => {
+    if (!drawing) return;
+    drawing = false;
+
+    clearInterval(drawingInterval); // Çizim intervalini durdur
+
+    const width = e.offsetX - startX;
+    const height = e.offsetY - startY;
+
+    let shape = null;
+
+    if (mode === 'draw') {
+        if (currentPath.length > 1) {
+            shape = { type: 'path', path: currentPath, color: currentColor, lineWidth: currentLineWidth };
+            shapes.push(shape);
+        }
+        currentPath = [];
+    } else if (mode === 'line') {
+        shape = { type: 'line', startX, startY, endX: e.offsetX, endY: e.offsetY, color: currentColor, lineWidth: currentLineWidth };
+        shapes.push(shape);
+    } else if (mode === 'rectangle') {
+        shape = { type: 'rectangle', startX, startY, width, height, color: currentColor, lineWidth: currentLineWidth };
+        shapes.push(shape);
+    } else if (mode === 'circle') {
+        const radius = Math.sqrt(width * width + height * height);
+        shape = { type: 'circle', startX, startY, radius, color: currentColor, lineWidth: currentLineWidth };
+        shapes.push(shape);
+    } else if (mode === 'triangle') {
+        shape = { type: 'triangle', startX, startY, width, height, color: currentColor, lineWidth: currentLineWidth };
+        shapes.push(shape);
+    }
+
+    if (shape) {
+        redrawShapes();
+        sendDrawing(shape); // WebSocket üzerinden çizimi gönder
+    }
+});
+
 
 canvas.addEventListener('mouseup', e => {
     if (!drawing) return;
