@@ -171,11 +171,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
                         if connection["websocket"] != websocket:
                             await connection["websocket"].send_json(redo_action)
             else:
-                # Çizim veri parçaları server tarafında depolanmaya devam eder
-                lobby["redo_stack"] = []
+                # Her 100 ms'de gelen çizim verilerini ayrı olarak canvas'a ekliyoruz
                 lobby["canvas"].append(data_json)
 
-            # Tüm bağlantılara çizim verilerini gönder
             for connection in lobby["connections"]:
                 if connection["websocket"] != websocket:
                     await connection["websocket"].send_json(data_json)
