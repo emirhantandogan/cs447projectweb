@@ -337,3 +337,22 @@ function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     sendDrawing({ type: 'clear' });
 }
+
+function downloadCanvas() {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+
+    tempCtx.fillStyle = 'white';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    tempCtx.drawImage(canvas, 0, 0);
+
+
+    const link = document.createElement('a');
+    link.download = 'whiteboard_with_background.png';
+    link.href = tempCanvas.toDataURL(); 
+    link.click(); 
+}

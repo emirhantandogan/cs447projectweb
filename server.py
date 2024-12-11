@@ -217,11 +217,7 @@ if __name__ == "__main__":
     #uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
 
-
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
-
+#bu linklerden ulaşabilirsin:
 #http://10.200.42.130:8000/static/index.html
 #http://127.0.0.1:8000/static/index.html
 
