@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lobi Sistemi</title>
+    <title>Lobby System</title>
     <link rel="stylesheet" href="main_menu_style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Lobi Sistemi</h1>
+        <h1>Lobby System</h1>
         <div id="lobby-screen">
-            <h2>Lobi Oluştur</h2>
-            <input id="username" type="text" placeholder="Kullanıcı Adı" required>
-            <input id="lobby-name" type="text" placeholder="Lobi İsmi" required>
-            <input id="lobby-password" type="password" placeholder="Lobi Şifresi (Opsiyonel)">
-            <input id="lobby-max-users" type="number" placeholder="Maksimum Kullanıcı Sayısı (Opsiyonel)">
-            <button onclick="createLobby()">Lobi Oluştur</button>
+            <h2>Create Lobby</h2>
+            <input id="username" type="text" placeholder="Username" required>
+            <input id="lobby-name" type="text" placeholder="Lobby Name" required>
+            <input id="lobby-password" type="password" placeholder="Lobby Password (Optional)">
+            <input id="lobby-max-users" type="number" placeholder="Maximum Number of Users (Optional)">
+            <button onclick="createLobby()">Create Lobby</button>
             <hr>
-            <h2>Mevcut Lobiler</h2>
-            <button id="refresh-button" onclick="fetchLobbies()">Yenile</button>
+            <h2>Current Lobbies</h2>
+            <button id="refresh-button" onclick="fetchLobbies()">Refresh</button>
             <ul id="lobby-list"></ul>
         </div>
     </div>
