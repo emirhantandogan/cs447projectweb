@@ -45,7 +45,7 @@ def get_lobbies():
         "name": name,
         "has_password": bool(lobby["password"]),
         "current_users": len(lobby["connections"]),
-        "max_users": lobby["max_users"] if lobby["max_users"] > 0 else "Limitsiz"
+        "max_users": lobby["max_users"] if lobby["max_users"] > 0 else "Unlimited"
     } for name, lobby in lobbies.items()]
 
 @app.post("/create_lobby")
@@ -214,8 +214,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    #uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
+    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
+    #uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
 
 #bu linklerden ulaşabilirsin:
 #http://10.200.42.130:8000/static/index.html

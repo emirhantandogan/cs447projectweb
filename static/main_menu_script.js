@@ -20,12 +20,12 @@ async function fetchLobbies() {
             // Şifreli/şifresiz durumunu ve kullanıcı limitini ekle
             li.innerHTML = `
                 <span class="lobby-name">${lobby.name}</span>
-                <span class="lobby-status">${lobby.has_password ? "Şifreli" : "Şifresiz"}</span>
+                <span class="lobby-status">${lobby.has_password ? "Password Required" : "No Password"}</span>
                 <span class="lobby-users">(${lobby.current_users}/${lobby.max_users})</span>
             `;
 
             const joinButton = document.createElement("button");
-            joinButton.textContent = "Katıl";
+            joinButton.textContent = "Join";
             joinButton.onclick = () => joinLobby(lobby.name, lobby.has_password);
 
             li.appendChild(joinButton);
