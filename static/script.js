@@ -9,39 +9,35 @@ let startX, startY;
 let shapes = [];
 let redoStack = [];
 let currentPath = [];
-let currentColor = '#000000'; // Varsayılan çizim rengi
-let currentLineWidth = 2; // Varsayılan çizgi kalınlığı
-let drawingInterval = null; // Çizim verisinin gönderimi için interval id'si
+let currentColor = '#000000'; 
+let currentLineWidth = 2; 
+let drawingInterval = null; 
 
-// URL'deki query parametrelerini ayrıştır
+// URL'deki query parametrelerini ayrıştırmak
 const params = new URLSearchParams(window.location.search);
 const lobbyName = params.get('lobby');
 const username = params.get('username');
 token = params.get('token'); // Token alınıyor
 console.log(`Query Params: lobby=${lobbyName}, username=${username}, token=${token}`);
 
-// Kullanıcı listesi için DOM öğesi
 const userListElement = document.getElementById('user-list');
 
-// Benzersiz oturum kimliği oluştur
 const sessionId = generateSessionId();
 
 function generateSessionId() {
-    return Math.random().toString(36).substring(2, 15); // Basit bir benzersiz ID
+    return Math.random().toString(36).substring(2, 15); 
 }
 
-// WebSocket bağlantısı kur
+//creating websocket connection
 if (!lobbyName || !username || !token) {
-    alert("Lobi, kullanıcı adı veya token eksik!");
-    window.location.href = "/static/index.html"; // Ana sayfaya yönlendir
+    alert("Lobby, username, or token is missing!");
+    window.location.href = "/static/index.html"; 
 }
 
 const socket = new WebSocket(`ws://${window.location.host}/ws/${lobbyName}?token=${encodeURIComponent(token)}&username=${encodeURIComponent(username)}&session_id=${sessionId}`);
 
-// WebSocket olayları
 socket.onopen = () => {
-    console.log("WebSocket bağlantısı açıldı.");
-    // Kullanıcı adıyla bağlantı bilgisi gönder
+    console.log("WebSocket connection is opened.");
     socket.send(JSON.stringify({ type: "join", username }));
 };
 
@@ -49,33 +45,31 @@ socket.onopen = () => {
 let usernameTimeout = null;
 
 socket.onmessage = (event) => {
-    if (!event.data || event.data.trim() === "") return; // Gelen veriyi kontrol et, boşsa işlemi sonlandır
+    if (!event.data || event.data.trim() === "") return; 
     try {
         const data = JSON.parse(event.data);
-        console.log("WebSocket mesajı alındı:", data); // Debug log
+        console.log("WebSocket mesajı alındı:", data); 
 
         if (data.type === 'users') {
-            console.log("Kullanıcı listesi alındı:", data.users); // Kullanıcı listesini logla
+            console.log("Kullanıcı listesi alındı:", data.users); 
             updateUserList(data.users);
         } else if (data.type === 'path' || data.type === 'line' || data.type === 'rectangle' || data.type === 'circle' || data.type === 'triangle' || data.type === 'erase') {
             shapes.push(data);
             redrawShapes();
 
-            // Çizim yapan kişinin adını gösterme
+            //showing the name of the drawer
             if (data.username) {
                 ctx.font = "16px Arial";
                 ctx.fillStyle = "#000000";
                 const lastPoint = data.path ? data.path[data.path.length - 1] : { x: data.startX, y: data.startY };
                 ctx.fillText(data.username, lastPoint.x + 10, lastPoint.y + 10);
 
-                // Eğer önceden bir isim gösteriliyorsa bu timeout'u temizle
                 if (usernameTimeout) {
                     clearTimeout(usernameTimeout);
                 }
 
-                // 1 saniye sonra kullanıcının ismini temizle
                 usernameTimeout = setTimeout(() => {
-                    redrawShapes(); // Yeniden çizim yaparak isimleri temizle
+                    redrawShapes(); 
                 }, 1000);
             }
         } else if (data.type === 'undo') {
@@ -101,33 +95,31 @@ socket.onmessage = (event) => {
 
 
 socket.onclose = () => {
-    console.log("WebSocket bağlantısı kapandı.");
-    alert("Soket bağlantısı kapatıldı. Lobiye erişim başarısız.");
-    window.location.href = "/static/index.html"; // Ana menüye yönlendir
+    console.log("The WebSocket connection has been closed.");
+    alert("Socket connection closed. Lobby access failed.");
+    window.location.href = "/static/index.html"; 
 };
 
 socket.onerror = (error) => {
-    console.error("WebSocket hatası:", error);
-    alert("Soket bağlantısında bir hata oluştu. Ana menüye yönlendiriliyorsunuz.");
-    window.location.href = "/static/index.html"; // Ana menüye yönlendir
+    console.error("WebSocket error:", error);
+    alert("An error occurred in the socket connection. You are being redirected to the main menu.");
+    window.location.href = "/static/index.html"; 
 };
 
-// Çizim verilerini WebSocket ile gönderme
 function sendDrawing(data) {
     if (socket.readyState === WebSocket.OPEN && data) {
         try {
             socket.send(JSON.stringify(data));
         } catch (error) {
-            console.error("Veri gönderimi sırasında hata oluştu:", error);
+            console.error("An error occurred during data transmission:", error);
         }
     } else {
-        console.warn("Veri gönderilemedi. WebSocket bağlantısı açık değil veya veri geçersiz:", data);
+        console.warn("Data could not be sent. The WebSocket connection is not open or the data is invalid:", data);
     }
 }
 
-// Kullanıcı listesini güncelle
 function updateUserList(users) {
-    userListElement.innerHTML = ""; // Mevcut listeyi temizle
+    userListElement.innerHTML = ""; 
     users.forEach(user => {
         const li = document.createElement('li');
         li.textContent = user;
@@ -135,21 +127,18 @@ function updateUserList(users) {
     });
 }
 
-// Mod değiştirme
 function setMode(selectedMode) {
     mode = selectedMode;
 }
 
-// Renk ve çizgi kalınlığı değiştirme
 function changeColor(color) {
-    currentColor = color; // Sadece mevcut client'ın rengini değiştiriyoruz
+    currentColor = color; 
 }
 
 function changeLineWidth(width) {
-    currentLineWidth = width; // Sadece mevcut client'ın çizgi kalınlığını değiştiriyoruz
+    currentLineWidth = width; 
 }
 
-// Çizimleri yeniden çiz
 function redrawShapes() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     shapes.forEach(shape => {
@@ -190,7 +179,6 @@ function redrawShapes() {
     });
 }
 
-// Çizim olayları
 canvas.addEventListener('mousedown', e => {
     drawing = true;
     startX = e.offsetX;
@@ -202,15 +190,14 @@ canvas.addEventListener('mousedown', e => {
         currentPath = [{ x: startX, y: startY }];
     }
 
-    // Çizim sırasında belirli aralıklarla veriyi göndermek için interval başlat
     drawingInterval = setInterval(() => {
         if (currentPath.length > 1) {
             const partialShape = { type: 'path', path: [...currentPath], color: currentColor, lineWidth: currentLineWidth };
-            shapes.push(partialShape);  // Çizim parçasını shapes'e ekle
-            sendDrawing(partialShape);  // WebSocket üzerinden gönder
-            currentPath = [currentPath[currentPath.length - 1]];  // Sadece son noktayı tutarak bir sonraki parçaya devam et
+            shapes.push(partialShape);  
+            sendDrawing(partialShape);  
+            currentPath = [currentPath[currentPath.length - 1]];  
         }
-    }, 100); // Her 100 ms'de bir çizim verisi gönderilir
+    }, 100); 
 });
 
 
@@ -227,8 +214,8 @@ canvas.addEventListener('mousemove', e => {
         ctx.stroke();
         currentPath.push({ x, y });
     } else if (mode === 'erase') {
-        const width = currentLineWidth * 2; // Silginin genişliği çizgi kalınlığına bağlı olarak ayarlanıyor
-        const height = currentLineWidth * 2; // Silginin yüksekliği çizgi kalınlığına bağlı olarak ayarlanıyor
+        const width = currentLineWidth * 2; 
+        const height = currentLineWidth * 2; 
         ctx.clearRect(x - width / 2, y - height / 2, width, height);
         shapes.push({ type: 'erase', startX: x - width / 2, startY: y - height / 2, width, height });
         sendDrawing({ type: 'erase', startX: x - width / 2, startY: y - height / 2, width, height });
@@ -269,7 +256,7 @@ canvas.addEventListener('mouseup', e => {
     if (!drawing) return;
     drawing = false;
 
-    clearInterval(drawingInterval); // Çizim intervalini durdur
+    clearInterval(drawingInterval); 
 
     const width = e.offsetX - startX;
     const height = e.offsetY - startY;
@@ -299,16 +286,15 @@ canvas.addEventListener('mouseup', e => {
 
     if (shape) {
         redrawShapes();
-        sendDrawing(shape); // WebSocket üzerinden çizimi gönder
+        sendDrawing(shape); 
     }
 
-    // Çizim yapan kişinin adını temizlemek için bekleyin ve ardından isimleri temizleyin
     if (usernameTimeout) {
         clearTimeout(usernameTimeout);
     }
     usernameTimeout = setTimeout(() => {
-        redrawShapes(); // Yeniden çizim yaparak kullanıcı adını temizle
-    }, 1000); // 1 saniye sonra kullanıcının adını temizle
+        redrawShapes(); 
+    }, 1000); 
 });
 
 
@@ -356,3 +342,14 @@ function downloadCanvas() {
     link.href = tempCanvas.toDataURL(); 
     link.click(); 
 }
+
+
+document.getElementById('leave-lobby-button').addEventListener('click', () => {
+    if (confirm('Are you sure you want to leave the lobby?')) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.close();
+        }
+
+        window.location.href = "/static/index.html";
+    }
+});

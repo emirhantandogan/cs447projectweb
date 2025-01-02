@@ -1,23 +1,21 @@
 const lobbyScreen = document.getElementById("lobby-screen");
 const lobbyList = document.getElementById("lobby-list");
 
-// Mevcut lobileri backend'den çekip listeleme
-// Mevcut lobileri backend'den çekip listeleme
+
 async function fetchLobbies() {
     try {
         const response = await fetch("/lobbies");
         const lobbies = await response.json();
-        lobbyList.innerHTML = ""; // Mevcut listeyi temizle
+        lobbyList.innerHTML = ""; 
 
-        console.log("Fetched lobbies:", lobbies); // Gelen lobileri logla
+        console.log("Fetched lobbies:", lobbies); 
 
         lobbies.forEach((lobby) => {
-            console.log(`Processing lobby: ${lobby.name}, has_password: ${lobby.has_password}`); // Her lobi için log
+            console.log(`Processing lobby: ${lobby.name}, has_password: ${lobby.has_password}`); 
 
             const li = document.createElement("li");
-            li.className = "lobby-item"; // CSS için sınıf ekledik
+            li.className = "lobby-item"; 
 
-            // Şifreli/şifresiz durumunu ve kullanıcı limitini ekle
             li.innerHTML = `
                 <span class="lobby-name">${lobby.name}</span>
                 <span class="lobby-status">${lobby.has_password ? "Password Required" : "No Password"}</span>
@@ -32,20 +30,19 @@ async function fetchLobbies() {
             lobbyList.appendChild(li);
         });
     } catch (error) {
-        console.error("Lobiler alınırken bir hata oluştu:", error);
+        console.error("An error occurred while fetching the lobbies:", error);
     }
 }
 
 
-// Yeni bir lobi oluşturma
 async function createLobby() {
     const username = document.getElementById("username").value.trim();
     const lobbyName = document.getElementById("lobby-name").value.trim();
     const password = document.getElementById("lobby-password").value;
-    const maxUsers = parseInt(document.getElementById("lobby-max-users").value, 10) || 0;  // Maksimum kullanıcı sayısı, varsayılan 0
+    const maxUsers = parseInt(document.getElementById("lobby-max-users").value, 10) || 0;  
 
     if (!username || !lobbyName) {
-        alert("Lütfen kullanıcı adı ve lobi ismini doldurun!");
+        alert("Please fill in the username and lobby name!");
         return;
     }
 
@@ -60,14 +57,13 @@ async function createLobby() {
 
         if (result.error) {
             if (result.error.includes("kullanıcı adı")) {
-                alert("Bu kullanıcı adı zaten başka bir lobide mevcut. Lütfen başka bir kullanıcı adı seçin.");
+                alert("This username is already in use in another lobby. Please choose a different username.");
             } else {
-                alert(`Hata: ${result.error}`);
+                alert(`Error: ${result.error}`);
             }
         } else {
-            alert("Lobi başarıyla oluşturuldu!");
+            alert("The lobby has been successfully created!");
 
-            // Token al ve whiteboard ekranına yönlendir
             const tokenResponse = await fetch("/get_lobby_token", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -78,49 +74,45 @@ async function createLobby() {
             if (tokenResult.token) {
                 window.location.href = `/static/whiteboard.html?lobby=${lobbyName}&username=${encodeURIComponent(username)}&token=${encodeURIComponent(tokenResult.token)}`;
             } else {
-                alert("Token alınırken bir hata oluştu!");
+                alert("An error occurred while retrieving the token!");
             }
         }
     } catch (error) {
-        console.error("Lobi oluşturulurken bir hata oluştu:", error);
+        console.error("an error occured when creating lobby", error);
     }
 }
 
 
-// Bir lobiye katılma
 async function joinLobby(name, hasPassword) {
     const username = document.getElementById("username").value.trim();
     if (!username) {
-        alert("Lütfen önce bir kullanıcı adı girin!");
+        alert("Please enter a username first!");
         return;
     }
 
     try {
-        // Kullanıcı adı kontrolü ve token isteği
         const checkResponse = await fetch("/get_lobby_token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, username, password: "" }), // Şifreyi boş gönderiyoruz
+            body: JSON.stringify({ name, username, password: "" }), 
         });
 
         const checkResult = await checkResponse.json();
 
         if (checkResult.error) {
             if (checkResult.error.includes("kullanıcı adı")) {
-                alert("Bu kullanıcı adı zaten lobide mevcut. Lütfen başka bir kullanıcı adı seçin.");
-                return; // Şifre ekranına geçmeden işlemi sonlandırıyoruz
+                alert("This username is already in the lobby. Please choose a different username.");
+                return; 
             } else if (checkResult.error.includes("Lobi dolu")) {
-                alert("Bu lobi dolu. Maksimum kullanıcı limitine ulaşıldı.");
-                return; // Lobi dolu olduğunda işlemi hemen sonlandırıyoruz
+                alert("This lobby is full. The maximum user limit has been reached.");
+                return; 
             } else if (checkResult.error.includes("Şifre gerekli")) {
-                // Kullanıcı adı geçerli, şifre ekranına geçiyoruz
                 let password = "";
                 if (hasPassword) {
-                    password = prompt("Bu lobi şifreli. Lütfen şifreyi girin:");
-                    if (password === null) return; // Kullanıcı "İptal" derse işlem yapılmasın
+                    password = prompt("This lobby is password-protected. Please enter the password:");
+                    if (password === null) return; 
                 }
 
-                // Şifre doğrulama
                 const tokenResponse = await fetch("/get_lobby_token", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -130,27 +122,24 @@ async function joinLobby(name, hasPassword) {
                 const tokenResult = await tokenResponse.json();
 
                 if (tokenResult.error) {
-                    alert(`Hata: ${tokenResult.error}`);
+                    alert(`Error: ${tokenResult.error}`);
                 } else if (tokenResult.token) {
-                    alert("Lobiye başarıyla katıldınız!");
+                    alert("You have successfully joined the lobby!");
                     window.location.href = `/static/whiteboard.html?lobby=${name}&username=${encodeURIComponent(username)}&token=${encodeURIComponent(tokenResult.token)}`;
                 }
             } else {
                 alert(`Hata: ${checkResult.error}`);
             }
         } else if (checkResult.token) {
-            // Kullanıcı adı uygunsa ve şifre gerekmezse direkt yönlendir
-            alert("Lobiye başarıyla katıldınız!");
+            alert("You have successfully joined the lobby!");
             window.location.href = `/static/whiteboard.html?lobby=${name}&username=${encodeURIComponent(username)}&token=${encodeURIComponent(checkResult.token)}`;
         }
     } catch (error) {
-        console.error("Lobiye katılırken bir hata oluştu:", error);
+        console.error("an error occured when joining lobby:", error);
     }
 }
 
 
-// "Yenile" butonunu işlevsel hale getirme
 document.getElementById("refresh-button").addEventListener("click", fetchLobbies);
 
-// Sayfa yüklendiğinde mevcut lobileri yükle
 fetchLobbies();
