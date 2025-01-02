@@ -106,11 +106,14 @@ async function joinLobby(name, hasPassword) {
             } else if (checkResult.error.includes("Lobi dolu")) {
                 alert("This lobby is full. The maximum user limit has been reached.");
                 return; 
+            } else if (checkResult.error.includes("Lobi bulunamadı")) {
+                alert("The lobby couldn't be found. It might have been closed. Please refresh and try again.");
+                return;
             } else if (checkResult.error.includes("Şifre gerekli")) {
                 let password = "";
                 if (hasPassword) {
                     password = prompt("This lobby is password-protected. Please enter the password:");
-                    if (password === null) return; 
+                    if (password === null) return;
                 }
 
                 const tokenResponse = await fetch("/get_lobby_token", {
@@ -135,9 +138,11 @@ async function joinLobby(name, hasPassword) {
             window.location.href = `/static/whiteboard.html?lobby=${name}&username=${encodeURIComponent(username)}&token=${encodeURIComponent(checkResult.token)}`;
         }
     } catch (error) {
-        console.error("an error occured when joining lobby:", error);
+        console.error("An error occurred when joining lobby:", error);
+        alert("An unexpected error occurred. Please try again later.");
     }
 }
+
 
 
 document.getElementById("refresh-button").addEventListener("click", fetchLobbies);
