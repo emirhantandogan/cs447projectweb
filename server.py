@@ -97,8 +97,9 @@ def get_lobby_token(data: JoinLobbyData):
 
     # Token oluştur ve kaydet
     token = secrets.token_urlsafe(16)
-    lobby_tokens[token] = data.name
+    lobby_tokens[token] = {"lobby_name": data.name, "username": data.username}
     return {"token": token}
+
 
 
 async def broadcast_user_list(lobby_name: str):
@@ -129,6 +130,18 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
     if not username:
         await websocket.close(code=403)
         print(f"Hata: Eksik kullanıcı adı: {lobby_name}")
+        return
+
+    # Token doğrulaması
+    if token not in lobby_tokens:
+        await websocket.close(code=403)
+        print(f"Hata: Geçersiz token: {token}")
+        return
+
+    token_data = lobby_tokens[token]
+    if token_data["lobby_name"] != lobby_name or token_data["username"] != username:
+        await websocket.close(code=403)
+        print(f"Hata: Token bilgileri eşleşmiyor: {token_data}")
         return
 
     lobby = lobbies[lobby_name]
@@ -204,12 +217,18 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         if username in lobby["users"]:
             lobby["users"].remove(username)
 
+        # Tokenı temizle
+        for tok, data in list(lobby_tokens.items()):
+            if data["username"] == username and data["lobby_name"] == lobby_name:
+                del lobby_tokens[tok]
+
         # Kullanıcı listesi güncellenir
         await broadcast_user_list(lobby_name)
 
         if not lobby["connections"]:
             print(f"Lobi siliniyor: {lobby_name}")
             del lobbies[lobby_name]
+
 
 
 if __name__ == "__main__":
