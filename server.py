@@ -11,7 +11,7 @@ import json
 
 app = FastAPI()
 
-print("FastAPI uygulaması başlatılıyor...")
+print("FastAPI application is starting...")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,7 +40,7 @@ class JoinLobbyData(BaseModel):
 
 @app.get("/lobbies")
 def get_lobbies():
-    print(f"Mevcut lobiler: {lobbies}")
+    print(f"Current lobbies: {lobbies}")
     return [{
         "name": name,
         "has_password": bool(lobby["password"]),
@@ -70,7 +70,7 @@ def create_lobby(data: LobbyData):
         "connections": [],
         "max_users": data.max_users
     }
-    print(f"Lobi oluşturuldu: {data.name}")
+    print(f"Lobby is created: {data.name}")
     return {"message": "Lobi oluşturuldu", "lobby_name": data.name}
 
 @app.post("/get_lobby_token")
@@ -106,20 +106,20 @@ async def broadcast_user_list(lobby_name: str):
     """Lobideki tüm kullanıcılara kullanıcı listesini gönderir."""
     lobby = lobbies[lobby_name]
     users = [connection["username"] for connection in lobby["connections"]]
-    print(f"Lobi '{lobby_name}' için kullanıcı listesi gönderiliyor: {users}")  # Debug log
+    print(f"Lobby '{lobby_name}' is sending user list for: {users}")  # Debug log
     for connection in lobby["connections"]:
         try:
             await connection["websocket"].send_json({"type": "users", "users": users})
-            print(f"Kullanıcı listesi gönderildi: {connection['username']}")  # Debug log
+            print(f"User list sent: {connection['username']}")  # Debug log
         except Exception as e:
-            print(f"Hata: Kullanıcı listesi gönderilemedi: {connection['username']}, Hata: {e}")
+            print(f"Error: Failed to send user list: {connection['username']}, Hata: {e}")
 
 
 @app.websocket("/ws/{lobby_name}")
 async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
     if lobby_name not in lobbies:
         await websocket.close(code=403)
-        print(f"Hata: Lobi bulunamadı: {lobby_name}")
+        print(f"Error: Lobby couldn't found: {lobby_name}")
         return
 
     query_params = websocket.query_params
@@ -129,19 +129,19 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
 
     if not username:
         await websocket.close(code=403)
-        print(f"Hata: Eksik kullanıcı adı: {lobby_name}")
+        print(f"Error: username is missing: {lobby_name}")
         return
 
     # Token doğrulaması
     if token not in lobby_tokens:
         await websocket.close(code=403)
-        print(f"Hata: Geçersiz token: {token}")
+        print(f"Error: invalid token: {token}")
         return
 
     token_data = lobby_tokens[token]
     if token_data["lobby_name"] != lobby_name or token_data["username"] != username:
         await websocket.close(code=403)
-        print(f"Hata: Token bilgileri eşleşmiyor: {token_data}")
+        print(f"Error: wrong token: {token_data}")
         return
 
     lobby = lobbies[lobby_name]
@@ -149,20 +149,20 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
     # Maksimum kullanıcı limitine ulaşıldıysa bağlantıya izin verme
     if lobby["max_users"] > 0 and len(lobby["connections"]) >= lobby["max_users"]:
         await websocket.close(code=403)
-        print(f"Hata: Lobi dolu: {lobby_name}")
+        print(f"Error: lobby is full: {lobby_name}")
         return
 
     # Aynı kullanıcı adı varsa yeni girişe izin verme
     for connection in lobby["connections"]:
         if connection["username"] == username:
             await websocket.close(code=403)
-            print(f"Hata: Kullanıcı adı zaten kullanılıyor: {username}")
+            print(f"Error: Username is already in use: {username}")
             return
 
     await websocket.accept()
     lobby["users"].append(username)
     lobby["connections"].append({"username": username, "websocket": websocket, "session_id": session_id})
-    print(f"WebSocket bağlantısı kabul edildi: {lobby_name} - Kullanıcı: {username} - Session ID: {session_id}")
+    print(f"WebSocket connection is accepted: {lobby_name} - Username: {username} - Session ID: {session_id}")
 
     # Kullanıcı listesi tüm kullanıcılara gönderilir
     await broadcast_user_list(lobby_name)
@@ -173,19 +173,18 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
 
     try:
         while True:
-            # WebSocket mesajını alırken kontrol et ve hata yönetimi yap
             try:
                 data = await websocket.receive_text()
                 if not data.strip():
                     continue  # Boş mesajları yok say
                 data_json = json.loads(data)
             except json.JSONDecodeError:
-                print(f"Hata: Geçersiz JSON verisi alındı: {data}")
+                print(f"Error: Invalid JSON data received: {data}")
                 continue
 
             # Gelen çizim verisine username'i ekleyelim
             data_json["username"] = username
-            print(f"Gelen çizim verisi: {data_json}")
+            print(f"Incoming drawing data: {data_json}")
 
             if data_json["type"] == "clear":
                 lobby["canvas"] = []
@@ -210,7 +209,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
                     await connection["websocket"].send_json(data_json)
 
     except WebSocketDisconnect:
-        print(f"WebSocket bağlantısı kesildi: {lobby_name} - Kullanıcı: {username}")
+        print(f"WebSocket connection is closed: {lobby_name} - Kullanıcı: {username}")
         lobby["connections"] = [
             conn for conn in lobby["connections"] if conn["websocket"] != websocket
         ]
@@ -226,15 +225,15 @@ async def websocket_endpoint(websocket: WebSocket, lobby_name: str):
         await broadcast_user_list(lobby_name)
 
         if not lobby["connections"]:
-            print(f"Lobi siliniyor: {lobby_name}")
+            print(f"Lobby is being deleted: {lobby_name}")
             del lobbies[lobby_name]
 
 
 
 if __name__ == "__main__":
     import uvicorn
-    #uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
+    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True) #localde test ederken bunun commentini kaldır.
+    #uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True) #aws ye gönderirken bunun commentini kaldır.
 
 #bu linklerden ulaşabilirsin:
 #http://10.200.42.130:8000/static/index.html
